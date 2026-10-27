@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#2C66DB">
+<title>Review & Sign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* One column: the document as a sheet of paper, then the signing card, then the send-back screen. */
+:root{
+  --bg:#EEF2F7; --paper:#FFFFFF; --ink:#18212E; --muted:#5A6A80; --line:#DCE3EC; --soft:#F2F5FA;
+  --tape:#2C66DB; --tape-soft:#DCE7FB; --good:#1E8556; --good-soft:#DCF2E6; --bad:#BE3B33;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#0E131A;--soft:#1A222D;--line:#2A3545;--muted:#93A1B5;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(40px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+@media (prefers-color-scheme:dark){body{color:#E5EBF3}}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button,input{font:inherit}
+:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.paper{background:var(--paper);color:var(--ink);border-radius:10px;box-shadow:0 1px 2px rgba(19,32,51,.06),0 10px 30px rgba(19,32,51,.10);padding:30px 32px;font-size:14px}
+.ph{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;border-bottom:3px solid var(--tape);padding-bottom:16px}
+.ph h1{font-family:var(--f-display);font-size:24px;line-height:1.15;margin:0 0 4px;letter-spacing:-.01em}
+.biz{color:var(--muted);font-size:13px}
+.kind{font-family:var(--f-display);font-size:28px;letter-spacing:.05em;color:var(--tape);margin:0;text-align:right}
+.meta{display:grid;grid-template-columns:auto auto;gap:2px 14px;justify-content:end;font-size:13px}
+.meta span:nth-child(odd){color:var(--muted)}
+.to{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:18px 0}
+.lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:420px}
+th{background:#EEF2F8;text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:8px;color:#425066}
+td{padding:9px 8px;border-bottom:1px solid #E1E6EE;vertical-align:top}
+.r{text-align:right}
+.tot{margin-left:auto;width:min(290px,100%);margin-top:12px;display:flex;flex-direction:column;gap:4px}
+.tot div{display:flex;justify-content:space-between;gap:12px}
+.tot .g{border-top:2px solid var(--ink);padding-top:7px;font-weight:700;font-size:17px}
+.note{margin-top:18px;white-space:pre-wrap;font-size:13px}
+.foot{margin-top:14px;color:var(--muted);font-size:12.5px;white-space:pre-wrap}
+
+.card{background:var(--paper);color:var(--ink);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 2px rgba(19,32,51,.06)}
+.card h2{font-family:var(--f-display);font-size:21px;margin:0;line-height:1.2}
+.card p{margin:0;color:var(--muted)}
+.f{display:flex;flex-direction:column;gap:6px}
+.f label{font-size:12.5px;font-weight:700;color:var(--muted)}
+.f input[type=text]{border:1px solid #CFD8E3;border-radius:9px;padding:11px 12px;font-size:16px;background:#fff;color:var(--ink)}
+.pad{position:relative;border:1.5px solid #CFD8E3;border-radius:12px;background:#fff;touch-action:none}
+.pad canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair;border-radius:12px}
+.pad .line{position:absolute;left:18px;right:18px;bottom:44px;border-bottom:1.5px solid #C9D2DF;pointer-events:none}
+.pad .x{position:absolute;left:18px;bottom:48px;color:#8B97A8;font-weight:700;pointer-events:none}
+.pad .hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#A3AEBD;pointer-events:none}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.agree{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink)}
+.agree input{width:22px;height:22px;accent-color:var(--tape);flex:none;margin-top:1px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #CFD8E3;background:#fff;color:var(--ink);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none;font-size:15px}
+.btn.big{width:100%;padding:15px 16px;font-size:17px;border-radius:12px}
+.btn.primary{background:var(--tape);border-color:var(--tape);color:#fff}
+.btn.good{background:var(--good);border-color:var(--good);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg{width:20px;height:20px;flex:none}
+.err{color:var(--bad);font-weight:600;font-size:14px}
+.done-head{display:flex;gap:12px;align-items:center}
+.check{width:44px;height:44px;border-radius:50%;background:var(--good-soft);color:var(--good);display:flex;align-items:center;justify-content:center;flex:none}
+.contact{background:var(--soft);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--ink)}
+.contact .item{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.contact b{font-family:var(--f-mono);font-weight:600}
+.small{font-size:13px;color:var(--muted)}
+.stamp{display:inline-block;border:2px solid var(--good);color:var(--good);font-weight:800;letter-spacing:.1em;padding:3px 10px;border-radius:4px;font-family:var(--f-display);transform:rotate(-3deg)}
+.sig{margin-top:18px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;border-top:1px solid #E1E6EE;padding-top:14px}
+.sig img{height:60px;max-width:240px}
+.empty{text-align:center;padding:60px 20px}
+.empty h1{font-family:var(--f-display)}
+@media (max-width:520px){ .paper{padding:22px 18px} .kind{text-align:left} .meta{justify-content:start} }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => (Number(n)||0).toLocaleString("en-US",{style:"currency",currency:"USD"});
+const nice = s => { if(!s) return ""; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
+const stamp = d => d.toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
+const KIND = {estimate:"Estimate", invoice:"Invoice"};
+
+function unb64url(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; const bin=atob(s); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+function decode(hash){
+  const h=decodeURIComponent((hash||"").replace(/^#/,""));
+  if(!h) return null;
+  const bytes=unb64url(h.slice(1));
+  const raw = h[0]==="z" ? window.pako.inflateRaw(bytes) : bytes;
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+function totals(o){
+  const subtotal=(o.i||[]).reduce((a,i)=>a+(Number(i[1])||0)*(Number(i[3])||0),0);
+  const discount=Number(o.ds)||0, taxable=Math.max(0,subtotal-discount), tax=taxable*(Number(o.tx)||0)/100, total=taxable+tax;
+  const paid=Number(o.pd)||0;
+  return {subtotal,discount,tax,total,paid,balance:total-paid,deposit:total*(Number(o.dp)||0)/100};
+}
+
+let doc=null, T=null, signed=null, pdfBlob=null;
+try{ doc=decode(location.hash); }catch(e){ doc=null; }
+
+function paperHtml(){
+  const b=doc.b||{}, c=doc.c||{}, j=doc.j;
+  const meta=[["No.",doc.n],["Date",nice(doc.d)]];
+  if(doc.x) meta.push([doc.k==="invoice"?"Due":"Valid until", nice(doc.x)]);
+  return `<article class="paper" aria-label="${esc(KIND[doc.k]||"Document")}">
+    <div class="ph"><div><h1>${esc(b.n)}</h1><div class="biz">${[b.o,b.a,b.p,b.e,b.l?"License #"+b.l:""].filter(Boolean).map(esc).join("<br>")}</div></div>
+      <div><p class="kind">${esc((KIND[doc.k]||"").toUpperCase())}</p><div class="meta">${meta.map(([k,v])=>`<span>${k}</span><span>${esc(v)}</span>`).join("")}</div></div></div>
+    <div class="to"><div><div class="lbl">${doc.k==="estimate"?"Prepared for":"Bill to"}</div><b>${esc(c.n)}</b><br>${[c.t,c.a].filter(Boolean).map(esc).join("<br>")}</div>
+      ${j?`<div style="text-align:right"><div class="lbl">Job</div><b>${esc(j.n)}</b><br>${[j.a,j.s].filter(Boolean).map(esc).join("<br>")}</div>`:""}</div>
+    <div class="tbl"><table><thead><tr><th>Description</th><th class="r">Qty</th><th>Unit</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>
+      ${(doc.i||[]).map(i=>`<tr><td>${esc(i[0])}</td><td class="r num">${esc(i[1])}</td><td>${esc(i[2])}</td><td class="r num">${money(i[3])}</td><td class="r num">${money((Number(i[1])||0)*(Number(i[3])||0))}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="tot">
+      <div><span>Subtotal</span><span class="num">${money(T.subtotal)}</span></div>
+      ${T.discount?`<div><span>Discount</span><span class="num">−${money(T.discount)}</span></div>`:""}
+      ${T.tax?`<div><span>Tax (${esc(doc.tx)}%)</span><span class="num">${money(T.tax)}</span></div>`:""}
+      <div class="g"><span>Total</span><span class="num">${money(T.total)}</span></div>
+      ${doc.k==="estimate"&&T.deposit?`<div><span>Deposit to schedule (${esc(doc.dp)}%)</span><span class="num">${money(T.deposit)}</span></div>`:""}
+      ${doc.k==="invoice"&&T.paid?`<div><span>Paid</span><span class="num">−${money(T.paid)}</span></div><div style="font-weight:700"><span>Balance due</span><span class="num">${money(T.balance)}</span></div>`:""}
+    </div>
+    ${signed?`<div class="sig"><div><img src="${signed.img}" alt="Signature"><div class="lbl">${doc.k==="estimate"?"Accepted and signed":"Signed"}</div></div><div class="small"><b style="color:var(--ink)">${esc(signed.name)}</b><br>${esc(stamp(signed.at))}<br>Signed online</div></div>`:""}
+    ${doc.no?`<div class="note"><div class="lbl">Notes</div>${esc(doc.no)}</div>`:""}
+    ${doc.f?`<div class="foot">${esc(doc.f)}</div>`:""}
+  </article>`;
+}
+const agreeText = () => doc.k==="estimate"
+  ? `I accept estimate ${doc.n} for ${money(T.total)}${T.deposit?` and agree to a ${money(T.deposit)} deposit to schedule the work`:""}.`
+  : `I approve invoice ${doc.n} for ${money(T.total)}.`;
+
+function signCard(){
+  return `<section class="card" aria-labelledby="signH">
+    <h2 id="signH">${doc.k==="estimate"?"Sign to accept":"Sign to approve"}</h2>
+    <p>Have a question first? ${(doc.b||{}).p?`Call or text ${esc(doc.b.p)}.`:""}${(doc.b||{}).e?` Email ${esc(doc.b.e)}.`:""}</p>
+    <div class="f"><label for="nm">Your full name</label><input type="text" id="nm" autocomplete="name" value="${esc((doc.c||{}).t||"")}"></div>
+    <div class="f"><label>Your signature</label>
+      <div class="pad"><canvas id="cv" aria-label="Signature area"></canvas><span class="x">✕</span><span class="line"></span><span class="hint" id="hint">Sign here with your finger</span></div>
+      <div class="row"><span class="small">Use your finger, a stylus, or your mouse.</span><button class="btn" id="clr" type="button">Clear</button></div>
+    </div>
+    <label class="agree"><input type="checkbox" id="ok"><span>${esc(agreeText())}</span></label>
+    <div id="msg" class="err" role="alert"></div>
+    <button class="btn big primary" id="go" type="button">Accept & sign</button>
+  </section>`;
+}
+const ICON = {
+  sms:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg>',
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>',
+  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  ok:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'
+};
+function approvalText(){ return `Hi, this is ${signed.name}. ${doc.k==="estimate"?`I accepted estimate ${doc.n}`:`I approved invoice ${doc.n}`} for ${money(T.total)} and signed it on ${stamp(signed.at)}.`; }
+function doneCard(){
+  const b=doc.b||{}, phone=(b.p||"").replace(/[^\d+]/g,"");
+  const body=encodeURIComponent(approvalText());
+  const subj=encodeURIComponent(`Signed ${KIND[doc.k].toLowerCase()} ${doc.n}`);
+  return `<section class="card" aria-labelledby="doneH">
+    <div class="done-head"><div class="check">${ICON.ok}</div><div><h2 id="doneH">Signed. Now send it to ${esc(b.n||"us")}</h2><p>Tap the green button to let ${esc(b.n||"us")} know. It only takes a second.</p></div></div>
+    ${phone?`<a class="btn big good" href="sms:${esc(phone)}?&body=${body}">${ICON.sms}Text my approval to ${esc(b.n||"them")}</a>`:""}
+    <button class="btn big ${phone?"":"good"}" id="share" type="button">${ICON.file}Send the signed PDF</button>
+    ${b.e?`<a class="btn big" href="mailto:${esc(b.e)}?subject=${subj}&body=${body}">${ICON.mail}Email ${esc(b.n||"them")}</a>`:""}
+    <div class="contact">
+      <span class="small">When your share menu opens, pick Messages or Email and send it to:</span>
+      ${b.p?`<div class="item"><span>Text</span><span><b>${esc(b.p)}</b> <button class="btn" data-copy="${esc(b.p)}" type="button">Copy</button></span></div>`:""}
+      ${b.e?`<div class="item"><span>Email</span><span><b>${esc(b.e)}</b> <button class="btn" data-copy="${esc(b.e)}" type="button">Copy</button></span></div>`:""}
+    </div>
+    <button class="btn" id="save" type="button">Save a copy for my records</button>
+    <div id="msg" class="small" role="status"></div>
+  </section>`;
+}
+
+function render(){
+  if(!doc || !doc.k || !doc.b){
+    document.title="Link not found";
+    $("#app").innerHTML=`<div class="card empty"><h1>This link doesn't open a document</h1><p>The link may have been cut off when it was copied. Ask the person who sent it to send it again.</p></div>`;
+    return;
+  }
+  T=totals(doc);
+  document.title=`${KIND[doc.k]} ${doc.n} · ${doc.b.n}`;
+  $("#app").innerHTML = (signed?doneCard():"") + paperHtml() + (signed?"":signCard());
+  if(!signed) initPad();
+}
+
+let pad=null;
+function initPad(){
+  const cv=$("#cv"), r=cv.getBoundingClientRect(), dpr=Math.max(1,window.devicePixelRatio||1);
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+  const ctx=cv.getContext("2d"); ctx.scale(dpr,dpr); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#132033"; ctx.fillStyle="#132033"; ctx.lineWidth=2.6;
+  pad={cv,ctx,ink:false,down:false,last:null};
+  const pt=e=>{ const b=cv.getBoundingClientRect(); return [e.clientX-b.left,e.clientY-b.top]; };
+  cv.addEventListener("pointerdown",e=>{ e.preventDefault(); cv.setPointerCapture(e.pointerId); pad.down=true; pad.last=pt(e); ctx.beginPath(); ctx.arc(pad.last[0],pad.last[1],1.2,0,Math.PI*2); ctx.fill(); if(!pad.ink){ pad.ink=true; $("#hint").hidden=true; } });
+  cv.addEventListener("pointermove",e=>{ if(!pad.down) return; e.preventDefault(); const p=pt(e); ctx.beginPath(); ctx.moveTo(pad.last[0],pad.last[1]); ctx.lineTo(p[0],p[1]); ctx.stroke(); pad.last=p; });
+  const up=()=>{ pad.down=false; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+}
+function padImage(){
+  const cv=pad.cv, w=cv.width, h=cv.height, data=cv.getContext("2d").getImageData(0,0,w,h).data;
+  let x0=w,y0=h,x1=0,y1=0; for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(data[(y*w+x)*4+3]>0){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  if(x1<=x0) return null; const p=8; x0=Math.max(0,x0-p); y0=Math.max(0,y0-p); x1=Math.min(w,x1+p); y1=Math.min(h,y1+p);
+  const k=Math.min(1,540/(x1-x0),180/(y1-y0)); const o=document.createElement("canvas"); o.width=Math.round((x1-x0)*k); o.height=Math.round((y1-y0)*k);
+  o.getContext("2d").drawImage(cv,x0,y0,x1-x0,y1-y0,0,0,o.width,o.height); return o.toDataURL("image/png");
+}
+
+function buildPdf(){
+  const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:"pt",format:"letter"});
+  const b=doc.b||{}, c=doc.c||{}, j=doc.j, W=612, M=48, blue=[44,102,219], ink=[24,33,46], grey=[90,106,128];
+  pdf.setFillColor(...blue); pdf.rect(0,0,W,8,"F");
+  pdf.setTextColor(...ink); pdf.setFont("helvetica","bold"); pdf.setFontSize(18); pdf.text(b.n||"",M,52);
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(9.5); pdf.setTextColor(...grey);
+  let y=68; for(const l of [b.o,b.a,b.p,b.e,b.l?"License #"+b.l:""].filter(Boolean)){ pdf.text(String(l),M,y); y+=13; }
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(24); pdf.text((KIND[doc.k]||"").toUpperCase(),W-M,54,{align:"right"});
+  pdf.setFontSize(10); pdf.setFont("helvetica","normal");
+  const meta=[["No.",doc.n],["Date",nice(doc.d)]]; if(doc.x) meta.push([doc.k==="invoice"?"Due":"Valid until",nice(doc.x)]);
+  let my=74; for(const [k,v] of meta){ pdf.setTextColor(...grey); pdf.text(k,W-M-120,my); pdf.setTextColor(...ink); pdf.text(String(v),W-M,my,{align:"right"}); my+=14; }
+  y=Math.max(y,my)+14; pdf.setDrawColor(...blue); pdf.setLineWidth(2); pdf.line(M,y,W-M,y); y+=24;
+  pdf.setFontSize(8.5); pdf.setTextColor(...grey); pdf.setFont("helvetica","bold"); pdf.text(doc.k==="estimate"?"PREPARED FOR":"BILL TO",M,y); if(j) pdf.text("JOB",W-M,y,{align:"right"});
+  y+=15; pdf.setFontSize(11); pdf.setTextColor(...ink); pdf.text(c.n||"",M,y); if(j) pdf.text(j.n||"",W-M,y,{align:"right"});
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(9.5);
+  const cl=[c.t,c.a].filter(Boolean), jl=j?[j.a,j.s].filter(Boolean):[];
+  for(let i=0;i<Math.max(cl.length,jl.length);i++){ y+=13; if(cl[i]) pdf.text(String(cl[i]),M,y); if(jl[i]) pdf.text(String(jl[i]),W-M,y,{align:"right"}); }
+  y+=22;
+  pdf.autoTable({startY:y,head:[["Description","Qty","Unit","Rate","Amount"]],body:(doc.i||[]).map(i=>[i[0],String(i[1]),i[2],money(i[3]),money((Number(i[1])||0)*(Number(i[3])||0))]),margin:{left:M,right:M},theme:"plain",
+    headStyles:{fillColor:[238,242,248],textColor:[66,80,102],fontStyle:"bold",fontSize:8.5},bodyStyles:{fontSize:10,textColor:ink},columnStyles:{1:{halign:"right"},3:{halign:"right"},4:{halign:"right"}},
+    didParseCell:h=>{ if(h.section==="head"&&[1,3,4].includes(h.column.index)) h.cell.styles.halign="right"; },
+    didDrawCell:h=>{ if(h.section==="body"){ pdf.setDrawColor(225,230,238); pdf.setLineWidth(.5); pdf.line(h.cell.x,h.cell.y+h.cell.height,h.cell.x+h.cell.width,h.cell.y+h.cell.height);} }});
+  y=pdf.lastAutoTable.finalY+16;
+  const lines=[["Subtotal",money(T.subtotal)]]; if(T.discount) lines.push(["Discount","-"+money(T.discount)]); if(T.tax) lines.push([`Tax (${doc.tx}%)`,money(T.tax)]);
+  for(const [k,v] of lines){ pdf.setFontSize(10); pdf.setTextColor(...grey); pdf.text(k,W-M-170,y); pdf.setTextColor(...ink); pdf.text(v,W-M,y,{align:"right"}); y+=15; }
+  pdf.setDrawColor(...ink); pdf.setLineWidth(1.2); pdf.line(W-M-170,y-6,W-M,y-6); y+=8;
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(13); pdf.text("Total",W-M-170,y); pdf.text(money(T.total),W-M,y,{align:"right"}); y+=18;
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(10);
+  if(doc.k==="estimate"&&T.deposit){ pdf.text(`Deposit to schedule (${doc.dp}%)`,W-M-170,y); pdf.text(money(T.deposit),W-M,y,{align:"right"}); y+=18; }
+  if(doc.k==="invoice"&&T.paid){ pdf.text("Paid",W-M-170,y); pdf.text("-"+money(T.paid),W-M,y,{align:"right"}); y+=15; pdf.setFont("helvetica","bold"); pdf.text("Balance due",W-M-170,y); pdf.text(money(T.balance),W-M,y,{align:"right"}); y+=18; pdf.setFont("helvetica","normal"); }
+  y+=34; if(y>600){ pdf.addPage(); y=60; }
+  pdf.setDrawColor(225,230,238); pdf.setLineWidth(.8); pdf.line(M,y-14,W-M,y-14);
+  pdf.setFontSize(9.5); pdf.setTextColor(...ink); const ag=pdf.splitTextToSize(agreeText(),W-2*M); pdf.text(ag,M,y); y+=ag.length*12+8;
+  try{ pdf.addImage(signed.img,"PNG",M,y,180,60); }catch(e){}
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(8.5); pdf.setTextColor(...grey); pdf.text(doc.k==="estimate"?"ACCEPTED AND SIGNED":"SIGNED",M,y+74);
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(10.5); pdf.setTextColor(...ink); pdf.text(signed.name,M+230,y+26);
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(9.5); pdf.setTextColor(...grey); pdf.text(stamp(signed.at),M+230,y+40); pdf.text("Signed online",M+230,y+54);
+  y+=100;
+  pdf.setTextColor(...ink);
+  if(doc.no){ pdf.setFont("helvetica","bold"); pdf.text("Notes",M,y); y+=13; pdf.setFont("helvetica","normal"); const n=pdf.splitTextToSize(doc.no,W-2*M); pdf.text(n,M,y); y+=n.length*12+12; }
+  if(doc.f){ pdf.setTextColor(...grey); const f=pdf.splitTextToSize(doc.f,W-2*M); pdf.text(f,M,Math.max(y,720)); }
+  return pdf.output("blob");
+}
+const fileName = () => `Signed-${doc.n}-${(signed.name||"customer").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"-")}.pdf`;
+function saveBlob(){ const u=URL.createObjectURL(pdfBlob); const a=document.createElement("a"); a.href=u; a.download=fileName(); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
+
+document.addEventListener("click", async e => {
+  const t=e.target.closest("button"); if(!t) return;
+  if(t.id==="clr"){ const name=$("#nm").value, ok=$("#ok").checked; render(); $("#nm").value=name; $("#ok").checked=ok; return; }
+  if(t.id==="go"){
+    const name=$("#nm").value.trim(), msg=$("#msg");
+    if(!name){ msg.textContent="Please type your full name."; $("#nm").focus(); return; }
+    if(!pad || !pad.ink){ msg.textContent="Please sign in the box."; return; }
+    if(!$("#ok").checked){ msg.textContent="Please tick the box to accept."; return; }
+    const img=padImage(); if(!img){ msg.textContent="Please sign in the box."; return; }
+    signed={name,img,at:new Date()};
+    try{ pdfBlob=buildPdf(); }catch(err){ pdfBlob=null; }
+    render(); window.scrollTo({top:0,behavior:"smooth"});
+    return;
+  }
+  if(t.id==="share"){
+    const m=$("#msg");
+    if(!pdfBlob){ m.textContent="Couldn't make the PDF on this device. Use the text or email button instead."; return; }
+    const file=new File([pdfBlob], fileName(), {type:"application/pdf"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:fileName(), text:approvalText()}); m.textContent="Thanks! Make sure it went to "+((doc.b||{}).n||"them")+"."; }
+      catch(err){ if(err && err.name!=="AbortError"){ saveBlob(); m.textContent="Saved the signed PDF. Attach it to a text or email to "+((doc.b||{}).n||"them")+"."; } }
+    } else { saveBlob(); m.textContent="Saved the signed PDF to your downloads. Attach it to a text or email to "+((doc.b||{}).n||"them")+"."; }
+    return;
+  }
+  if(t.id==="save"){ if(pdfBlob){ saveBlob(); $("#msg").textContent="Saved to your downloads."; } return; }
+  if(t.dataset.copy){ try{ await navigator.clipboard.writeText(t.dataset.copy); t.textContent="Copied"; setTimeout(()=>t.textContent="Copy",1500); }catch(err){ t.textContent="Select it"; } return; }
+});
+window.addEventListener("hashchange", () => { try{ doc=decode(location.hash); }catch(e){ doc=null; } signed=null; render(); });
+render();
+})();
+</script>
+</body>
+</html>
